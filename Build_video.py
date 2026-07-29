@@ -21,7 +21,7 @@ import requests
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from moviepy.editor import (
+from moviepy import (
     VideoFileClip,
     concatenate_videoclips,
     CompositeVideoClip,
@@ -37,6 +37,11 @@ SCRIPT_PATH = "script.txt"
 OUTPUT_PATH = "final_video.mp4"
 CLIPS_PER_SCENE = 2
 TARGET_RESOLUTION = (1920, 1080)
+
+# moviepy v2 requires a real font FILE (not a font family name like "Arial-Bold").
+# This path is present by default on Ubuntu GitHub Actions runners. If you run
+# locally on Mac/Windows, point this at a .ttf/.otf file that actually exists.
+CAPTION_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # Point this at your voiceover file to drive final length off the audio track
 # instead of the raw scene timestamps. Leave as None to use timestamps as-is.
@@ -208,7 +213,7 @@ def build_scene_clip(clip_paths: List[str], duration: float):
     loaded = [VideoFileClip(p).without_audio() for p in clip_paths]
 
     # crop/resize each source clip to a consistent target resolution
-    fitted = [c.resize(height=TARGET_RESOLUTION[1]) for c in loaded]
+    fitted = [c.resized(height=TARGET_RESOLUTION[1]) for c in loaded]
 
     segments = []
     remaining = duration
@@ -216,12 +221,12 @@ def build_scene_clip(clip_paths: List[str], duration: float):
     while remaining > 0:
         clip = fitted[i % len(fitted)]
         take = min(remaining, clip.duration)
-        segments.append(clip.subclip(0, take))
+        segments.append(clip.subclipped(0, take))
         remaining -= take
         i += 1
 
     scene_clip = concatenate_videoclips(segments, method="compose")
-    return scene_clip.set_duration(duration)
+    return scene_clip.with_duration(duration)
 
 
 # ----------------------------------------------------------------------------
@@ -229,11 +234,17 @@ def build_scene_clip(clip_paths: List[str], duration: float):
 # ----------------------------------------------------------------------------
 def _caption_for(scene: Scene, duration: float):
     return (
-        TextClip(scene.description, fontsize=42, color="white", font="Arial-Bold",
-                  method="caption", size=(TARGET_RESOLUTION[0] * 0.8, None))
-        .set_position(("center", "bottom"))
-        .set_duration(duration)
-        .margin(bottom=60, opacity=0)
+        TextClip(
+            text=scene.description,
+            font=CAPTION_FONT_PATH,
+            font_size=42,
+            color="white",
+            method="caption",
+            size=(int(TARGET_RESOLUTION[0] * 0.8), None),
+            margin=(0, 60),
+        )
+        .with_position(("center", "bottom"))
+        .with_duration(duration)
     )
 
 
@@ -252,8 +263,8 @@ def assemble_video(scenes: List[Scene], audio_path: Optional[str] = AUDIO_PATH,
         # Scale the whole assembled video to match the voiceover's length,
         # rather than trusting the sum of scene timestamps.
         speed_factor = video.duration / audio.duration
-        video = video.fx(vfx.speedx, speed_factor).set_duration(audio.duration)
-        video = video.set_audio(audio)
+        video = video.with_effects([vfx.MultiplySpeed(speed_factor)]).with_duration(audio.duration)
+        video = video.with_audio(audio)
     # else: keep video length exactly as the timestamps dictate (no audio track)
 
     video.write_videofile(output_path, fps=30, codec="libx264", audio_codec="aac")
