@@ -32,7 +32,7 @@ jobs:
       - name: Generate voiceover
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 15
+          timeout_minutes: 45
           max_attempts: 3
           command: python generate_voiceover.py
         env:
@@ -41,7 +41,7 @@ jobs:
       - name: Fetch background music
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 45
           max_attempts: 3
           command: python fetch_music.py
         env:
@@ -50,7 +50,7 @@ jobs:
       - name: Run video builder
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 20
+          timeout_minutes: 60
           max_attempts: 3
           command: python Build_video.py
         env:
@@ -61,7 +61,7 @@ jobs:
       - name: Post-process video (fades + YouTube re-encode)
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 10
+          timeout_minutes: 45
           max_attempts: 3
           command: python postprocess_video.py
 
