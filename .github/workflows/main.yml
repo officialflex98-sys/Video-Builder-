@@ -38,7 +38,9 @@ jobs:
           timeout_minutes: 45
           max_attempts: 3
           command: python generate_voiceover.py
-
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          
       - name: Fetch background music
         uses: nick-fields/retry@v3
         with:
