@@ -27,7 +27,9 @@ from moviepy import (
     CompositeVideoClip,
     TextClip,
     AudioFileClip,
+    CompositeAudioClip,
     vfx,
+    afx,
 )
 
 # ----------------------------------------------------------------------------
@@ -51,6 +53,15 @@ _DEFAULT_VOICEOVER = "voiceover.wav"
 AUDIO_PATH: Optional[str] = (
     _DEFAULT_VOICEOVER if os.path.exists(_DEFAULT_VOICEOVER) else None
 )
+
+# Point this at a background music file (mp3/wav) to mix in under the
+# voiceover. Loops automatically if shorter than the final video, and trims
+# if longer. Leave as None for no music. If a file named music.mp3 sits next
+# to this script, it's picked up automatically - no manual edit needed.
+_DEFAULT_MUSIC = "music.mp3"
+MUSIC_PATH: Optional[str] = _DEFAULT_MUSIC if os.path.exists(_DEFAULT_MUSIC) else None
+MUSIC_VOLUME = 0.15    # 0.0-1.0, kept low so it sits under the voiceover
+VOICEOVER_VOLUME = 1.0
 
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
 PEXELS_SEARCH_URL = "https://api.pexels.com/videos/search"
@@ -254,6 +265,7 @@ def _caption_for(scene: Scene, duration: float):
 
 
 def assemble_video(scenes: List[Scene], audio_path: Optional[str] = AUDIO_PATH,
+                    music_path: Optional[str] = MUSIC_PATH,
                     output_path: str = OUTPUT_PATH):
     scene_clips = []
     for scene in scenes:
@@ -263,14 +275,34 @@ def assemble_video(scenes: List[Scene], audio_path: Optional[str] = AUDIO_PATH,
 
     video = concatenate_videoclips(scene_clips, method="compose")
 
+    voiceover = None
     if audio_path:
-        audio = AudioFileClip(audio_path)
+        voiceover = AudioFileClip(audio_path)
         # Scale the whole assembled video to match the voiceover's length,
         # rather than trusting the sum of scene timestamps.
-        speed_factor = video.duration / audio.duration
-        video = video.with_effects([vfx.MultiplySpeed(speed_factor)]).with_duration(audio.duration)
-        video = video.with_audio(audio)
-    # else: keep video length exactly as the timestamps dictate (no audio track)
+        speed_factor = video.duration / voiceover.duration
+        video = video.with_effects([vfx.MultiplySpeed(speed_factor)]).with_duration(voiceover.duration)
+        voiceover = voiceover.with_effects([afx.MultiplyVolume(VOICEOVER_VOLUME)])
+    # else: keep video length exactly as the timestamps dictate (no voiceover track)
+
+    music = None
+    if music_path:
+        music = (
+            AudioFileClip(music_path)
+            .with_effects([afx.AudioLoop(duration=video.duration), afx.MultiplyVolume(MUSIC_VOLUME)])
+        )
+
+    if voiceover and music:
+        final_audio = CompositeAudioClip([music, voiceover])
+    elif voiceover:
+        final_audio = voiceover
+    elif music:
+        final_audio = music
+    else:
+        final_audio = None
+
+    if final_audio:
+        video = video.with_audio(final_audio)
 
     video.write_videofile(output_path, fps=30, codec="libx264", audio_codec="aac")
     return output_path
