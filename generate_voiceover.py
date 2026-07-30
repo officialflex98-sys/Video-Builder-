@@ -13,10 +13,11 @@ No API key needed. edge-tts has no meaningful daily request quota, so it's
 safe to call once per scene even on 30-40+ scene scripts - unlike Gemini's
 TTS models, which cap out at roughly 10-15 requests/day on the free tier.
 
-Retries: Microsoft's speech endpoint occasionally returns transient 403/
-WSServerHandshakeErrors under load. Each scene synthesis is retried with
-backoff before giving up, since a single dropped connection shouldn't fail
-the whole batch of 30+ scenes.
+Rate limiting: Microsoft's speech endpoint will silently rate-limit or drop
+connections (surfacing as NoAudioReceived, not a clean error) if requests
+fire back-to-back with no gap. A short delay is added between every scene's
+synthesis call, and retries use a longer backoff, so a 30-40 scene script
+doesn't hammer the endpoint fast enough to trigger this.
 """
 
 import os
@@ -29,8 +30,9 @@ from Build_video import parse_scene_script, SCRIPT_PATH  # reuse the same parser
 VOICE_NAME = "en-US-DavisNeural"   # deep, warm, cinematic/documentary tone
 OUTPUT_DIR = "voiceover_segments"
 
-MAX_RETRIES = 3
-RETRY_BASE_DELAY = 5   # seconds, doubles each attempt
+MAX_RETRIES = 4
+RETRY_BASE_DELAY = 10          # seconds, doubles each retry attempt
+SCENE_DELAY_SECONDS = 3        # pause between each scene's synthesis call
 
 
 async def _synthesize_scene(text: str, dest: str, voice: str = VOICE_NAME):
@@ -62,6 +64,8 @@ async def _generate_all(scenes, output_dir: str):
         print(f"  [{i + 1}/{len(scenes)}] synthesizing ({len(text)} chars) -> {dest}")
         await _synthesize_scene(text, dest)
         paths.append(dest)
+        if i < len(scenes) - 1:
+            await asyncio.sleep(SCENE_DELAY_SECONDS)
     return paths
 
 
