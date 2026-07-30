@@ -2,7 +2,10 @@
 Scene-script -> video assembler.
 
 Pipeline:
-  1. parse_scene_script()   reads script.txt into Scene objects
+  1. parse_scene_script()   reads script.txt into Scene objects. Handles both
+                            plain tab/pipe-delimited rows and full Markdown
+                            tables (including a leading/trailing "|" on each
+                            line and a "|---|---|---|---|" separator row).
   2. attach_scene_audio()   looks for a per-scene voiceover file (produced by
                             generate_voiceover.py) and, if found, uses its
                             real duration to drive that scene's length
@@ -109,13 +112,19 @@ def _split_keywords(cell: str) -> List[str]:
     return [p for p in parts if p]
 
 
-def _detect_delimiter(line: str) -> str:
+def _detect_delimiter(line: str) -> Optional[str]:
     if "\t" in line:
         return "\t"
     if "|" in line:
         return "|"
     # fall back to splitting on 2+ spaces
     return None
+
+
+def _is_markdown_separator(line: str) -> bool:
+    """Detects a markdown table divider row like |---|---|---|---|"""
+    stripped = line.strip().strip("|")
+    return bool(stripped) and all(c in "-: \t" for c in stripped)
 
 
 def parse_scene_script(path: str = SCRIPT_PATH) -> List[Scene]:
@@ -128,8 +137,20 @@ def parse_scene_script(path: str = SCRIPT_PATH) -> List[Scene]:
     delimiter = _detect_delimiter(raw_lines[0])
     scenes: List[Scene] = []
 
-    for i, line in enumerate(raw_lines):
-        if delimiter:
+    for line in raw_lines:
+        if _is_markdown_separator(line):
+            continue
+
+        if delimiter == "|":
+            # Strip a leading/trailing pipe so split doesn't yield an empty
+            # first column, e.g. "| 0:00–0:30 | ... |" -> "0:00–0:30 | ..."
+            trimmed = line.strip()
+            if trimmed.startswith("|"):
+                trimmed = trimmed[1:]
+            if trimmed.endswith("|"):
+                trimmed = trimmed[:-1]
+            cols = [c.strip() for c in trimmed.split("|")]
+        elif delimiter:
             cols = [c.strip() for c in line.split(delimiter)]
         else:
             cols = [c.strip() for c in re.split(r"\s{2,}", line)]
