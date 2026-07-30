@@ -21,18 +21,22 @@ import requests
 JAMENDO_CLIENT_ID = os.environ.get("JAMENDO_CLIENT_ID", "")
 JAMENDO_SEARCH_URL = "https://api.jamendo.com/v3.0/tracks/"
 
-# Jamendo uses folksonomy tags rather than exact moods - "cinematic" and
-# "documentary" tend to return calm, unobtrusive instrumental tracks that
-# work well under a voiceover. Override via MUSIC_TAG env var if you want
-# a different feel (e.g. "ambient", "inspiring", "emotional").
-MUSIC_TAG = os.environ.get("MUSIC_TAG", "cinematic")
+# Jamendo's "tags" filter only matches its own fixed taxonomy - a tag that
+# looks reasonable (like "cinematic") can still return zero results if it
+# isn't an exact match. Try several, in order, until one actually returns
+# tracks. Override the first choice via the MUSIC_TAG env var.
+MUSIC_TAGS = [
+    os.environ.get("MUSIC_TAG", "cinematic"),
+    "documentary",
+    "inspiring",
+    "ambient",
+    "instrumental",
+    "chill",
+]
 OUTPUT_PATH = "music.mp3"
 
 
-def fetch_background_music(tag: str = MUSIC_TAG, output_path: str = OUTPUT_PATH) -> str:
-    if not JAMENDO_CLIENT_ID:
-        raise SystemExit("Set the JAMENDO_CLIENT_ID environment variable first.")
-
+def _search(tag: str) -> list:
     params = {
         "client_id": JAMENDO_CLIENT_ID,
         "format": "json",
@@ -44,15 +48,41 @@ def fetch_background_music(tag: str = MUSIC_TAG, output_path: str = OUTPUT_PATH)
     }
     resp = requests.get(JAMENDO_SEARCH_URL, params=params, timeout=20)
     resp.raise_for_status()
-    results = resp.json().get("results", [])
+    data = resp.json()
+
+    # Jamendo returns HTTP 200 even on API-level errors (e.g. bad client_id) -
+    # the real status is nested in "headers".
+    status = data.get("headers", {}).get("status")
+    if status != "success":
+        error_msg = data.get("headers", {}).get("error_message", "unknown error")
+        raise SystemExit(f"Jamendo API error: {error_msg} - check JAMENDO_CLIENT_ID is valid.")
+
+    return data.get("results", [])
+
+
+def fetch_background_music(tags=MUSIC_TAGS, output_path: str = OUTPUT_PATH) -> str:
+    if not JAMENDO_CLIENT_ID:
+        raise SystemExit("Set the JAMENDO_CLIENT_ID environment variable first.")
+
+    results = []
+    for tag in tags:
+        print(f"Searching Jamendo for tag '{tag}'...")
+        results = _search(tag)
+        if results:
+            print(f"  Found {len(results)} track(s) for '{tag}'")
+            break
+        print(f"  No results for '{tag}', trying next tag...")
 
     if not results:
-        raise SystemExit(f"No Jamendo tracks found for tag '{tag}'. Try a different MUSIC_TAG.")
+        raise SystemExit(
+            f"No Jamendo tracks found for any of {tags}. "
+            "Double check JAMENDO_CLIENT_ID is set and valid."
+        )
 
     track = results[0]
     audio_url = track.get("audio")
     if not audio_url:
-        raise SystemExit("Top result had no downloadable audio URL - try again or change MUSIC_TAG.")
+        raise SystemExit("Top result had no downloadable audio URL - try again.")
 
     print(f"Selected track: {track.get('name')} by {track.get('artist_name')} "
           f"(license: {track.get('license_ccurl', 'see Jamendo track page')})")
