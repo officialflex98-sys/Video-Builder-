@@ -7,6 +7,7 @@ on:
       - "script.txt"
       - "Build_video.py"
       - "generate_voiceover.py"
+      - "postprocess_video.py"
   workflow_dispatch: {}
 
 jobs:
@@ -29,20 +30,44 @@ jobs:
         run: pip install moviepy requests google-genai
 
       - name: Generate voiceover
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          command: python generate_voiceover.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python generate_voiceover.py
+
+      - name: Fetch background music
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: python fetch_music.py
+        env:
+          JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
 
       - name: Run video builder
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          command: python Build_video.py
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python Build_video.py
+
+      - name: Post-process video (fades + YouTube re-encode)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: python postprocess_video.py
 
       - name: Upload finished video
         uses: actions/upload-artifact@v4
         with:
           name: final-video
-          path: final_video.mp4
+          path: final_video_youtube.mp4
           retention-days: 7
