@@ -45,7 +45,12 @@ CAPTION_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # Point this at your voiceover file to drive final length off the audio track
 # instead of the raw scene timestamps. Leave as None to use timestamps as-is.
-AUDIO_PATH: Optional[str] = None  # e.g. "voiceover.mp3"
+# If generate_voiceover.py already ran and produced voiceover.wav in this same
+# directory, it's picked up automatically - no manual edit needed.
+_DEFAULT_VOICEOVER = "voiceover.wav"
+AUDIO_PATH: Optional[str] = (
+    _DEFAULT_VOICEOVER if os.path.exists(_DEFAULT_VOICEOVER) else None
+)
 
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
 PEXELS_SEARCH_URL = "https://api.pexels.com/videos/search"
