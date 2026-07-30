@@ -16,7 +16,7 @@ OUTPUT_PATH = "final_video_youtube.mp4"
 FADE_DURATION = 1.5   # seconds, for both fade-in and fade-out
 
 # YouTube 1080p upload spec: H.264, 30fps, 16:9, 10-12 Mbps video, AAC 320kbps.
-RESOLUTION = "1920x1080"   # 16:9
+WIDTH, HEIGHT = 1920, 1080   # 16:9
 FPS = 30
 VIDEO_BITRATE = "11M"      # middle of the 10-12 Mbps target range
 MAX_BITRATE = "12M"
@@ -30,8 +30,8 @@ def postprocess_video(input_path: str = INPUT_PATH, output_path: str = OUTPUT_PA
     fade_out_start = max(duration - FADE_DURATION, 0)
 
     video_filter = (
-        f"scale={RESOLUTION}:force_original_aspect_ratio=decrease,"
-        f"pad={RESOLUTION}:(ow-iw)/2:(oh-ih)/2,"
+        f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,"
+        f"pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2,"
         f"fade=t=in:st=0:d={FADE_DURATION},"
         f"fade=t=out:st={fade_out_start}:d={FADE_DURATION}"
     )
