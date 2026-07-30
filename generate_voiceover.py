@@ -9,19 +9,18 @@ AUDIO_PATH default there) - no manual edit needed once both steps run in CI.
 Requires: pip install google-genai
 Env vars:  GEMINI_API_KEY (required)
 
-Notes / limits:
-- Each Gemini TTS call caps input around ~8,000 bytes and output around ~655s
-  of audio. This script generates one call PER SCENE (so long scripts are
-  safe) and stitches the resulting WAV clips together in order.
-- Output audio from the API is raw 16-bit PCM, mono, 24kHz - wrapped into a
-  proper .wav file here via the standard `wave` module.
+IMPORTANT - single call, not one per scene:
+gemini-3.1-flash-tts-preview's free tier caps out at 10 requests PER DAY
+(not per minute) - a script with more than ~10 scenes will always fail if
+you call the API once per scene, no matter how much you pace or retry.
+Instead, this script joins every scene's voiceover line into ONE prompt and
+makes a SINGLE TTS call. Gemini's per-call limits (~8,000 bytes input,
+~655s of output audio) comfortably cover a typical few-minute script.
 """
 
 import os
-import sys
 import time
 import wave
-from typing import List
 
 from google import genai
 from google.genai import types
@@ -37,20 +36,15 @@ SAMPLE_RATE = 24000
 CHANNELS = 1
 SAMPLE_WIDTH = 2              # 16-bit PCM
 
-# Short silence inserted between scenes so lines don't run into each other.
-GAP_SECONDS = 0.4
-
-# Free tier for this model allows only 3 requests/minute. Space calls out
-# well beyond that (20s would be the bare minimum) to avoid tripping the
-# limit in the first place, and retry with backoff if it happens anyway.
-MIN_SECONDS_BETWEEN_CALLS = 22
 MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 20
 
 
 def _synthesize(client: "genai.Client", text: str) -> bytes:
-    """Calls Gemini TTS for one chunk of text, returns raw PCM bytes.
-    Retries with backoff if the free-tier rate limit is hit (429)."""
+    """Calls Gemini TTS once for the full script, returns raw PCM bytes.
+    Retries with backoff if a transient rate limit is hit (429). Note: if
+    the free tier's PER-DAY cap is what's hit, retrying won't help until
+    the quota resets - the error message will say so explicitly."""
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = client.models.generate_content(
@@ -68,7 +62,11 @@ def _synthesize(client: "genai.Client", text: str) -> bytes:
             return response.candidates[0].content.parts[0].inline_data.data
         except genai_errors.ClientError as e:
             is_quota_error = getattr(e, "code", None) == 429 or "RESOURCE_EXHAUSTED" in str(e)
+            is_daily_cap = "PerDay" in str(e)
             if not is_quota_error or attempt == MAX_RETRIES:
+                if is_daily_cap:
+                    print("  [quota] This is a PER-DAY quota - retrying won't help until it "
+                          "resets. Consider upgrading the Gemini API tier if this recurs.")
                 raise
             wait = DEFAULT_RETRY_DELAY * attempt
             print(f"  [rate limit] hit quota, retrying in {wait}s "
@@ -91,25 +89,20 @@ def generate_voiceover(script_path: str = SCRIPT_PATH, output_path: str = OUTPUT
             "column (Voice-over Script) is populated for at least one scene."
         )
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    silence_chunk = b"\x00" * int(SAMPLE_RATE * SAMPLE_WIDTH * CHANNELS * GAP_SECONDS)
+    full_script = " ".join(lines)
+    print(f"Synthesizing full voiceover in one call ({len(full_script)} chars, "
+          f"{len(lines)} scenes)...")
 
-    pcm_chunks: List[bytes] = []
-    for i, line in enumerate(lines, 1):
-        print(f"[{i}/{len(lines)}] Synthesizing: {line[:60]!r}...")
-        pcm_chunks.append(_synthesize(client, line))
-        if i != len(lines):
-            pcm_chunks.append(silence_chunk)
-            time.sleep(MIN_SECONDS_BETWEEN_CALLS)
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    pcm_data = _synthesize(client, full_script)
 
     with wave.open(output_path, "wb") as wf:
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(SAMPLE_WIDTH)
         wf.setframerate(SAMPLE_RATE)
-        wf.writeframes(b"".join(pcm_chunks))
+        wf.writeframes(pcm_data)
 
-    total_bytes = sum(len(c) for c in pcm_chunks)
-    duration = total_bytes / (SAMPLE_RATE * SAMPLE_WIDTH * CHANNELS)
+    duration = len(pcm_data) / (SAMPLE_RATE * SAMPLE_WIDTH * CHANNELS)
     print(f"Wrote {output_path} (~{duration:.1f}s)")
     return output_path
 
