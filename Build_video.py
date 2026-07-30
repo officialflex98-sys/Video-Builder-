@@ -2,10 +2,15 @@
 Scene-script -> video assembler.
 
 Pipeline:
-  1. parse_scene_script()   reads script.txt into Scene objects. Handles both
-                            plain tab/pipe-delimited rows and full Markdown
-                            tables (including a leading/trailing "|" on each
-                            line and a "|---|---|---|---|" separator row).
+  1. parse_scene_script()   reads script.txt into Scene objects. Handles:
+                              (A) one-field-per-line format - Timestamp,
+                                  Scene Description, Keywords, and VO Script
+                                  each on their own line, repeating in
+                                  groups of 4 (with optional stray header
+                                  lines like "Timestamp" mixed in)
+                              (B) tab or pipe-delimited rows, including full
+                                  Markdown tables (leading/trailing "|" on
+                                  each line, "|---|---|---|---|" separator)
   2. attach_scene_audio()   looks for a per-scene voiceover file (produced by
                             generate_voiceover.py) and, if found, uses its
                             real duration to drive that scene's length
@@ -117,7 +122,6 @@ def _detect_delimiter(line: str) -> Optional[str]:
         return "\t"
     if "|" in line:
         return "|"
-    # fall back to splitting on 2+ spaces
     return None
 
 
@@ -127,6 +131,14 @@ def _is_markdown_separator(line: str) -> bool:
     return bool(stripped) and all(c in "-: \t" for c in stripped)
 
 
+def _is_timestamp_only_line(line: str) -> bool:
+    """True if the ENTIRE line (after stripping) is just a timestamp range,
+    e.g. "0:00-0:30" with nothing else on it - the signature of the
+    one-field-per-line script format (Timestamp, then Scene Description,
+    then Keywords, then VO script, each on their own line, repeating)."""
+    return bool(re.fullmatch(r"\d+:\d+\s*[–-]\s*\d+:\d+", line.strip()))
+
+
 def parse_scene_script(path: str = SCRIPT_PATH) -> List[Scene]:
     with open(path, "r", encoding="utf-8") as f:
         raw_lines = [l.rstrip("\n") for l in f if l.strip()]
@@ -134,16 +146,38 @@ def parse_scene_script(path: str = SCRIPT_PATH) -> List[Scene]:
     if not raw_lines:
         return []
 
-    delimiter = _detect_delimiter(raw_lines[0])
     scenes: List[Scene] = []
+
+    # --- Format A: one field per line (Timestamp / Description / Keywords /
+    # VO script each on their own line, repeating in groups of 4) ---
+    if any(_is_timestamp_only_line(l) for l in raw_lines):
+        i = 0
+        n = len(raw_lines)
+        while i < n:
+            if _is_timestamp_only_line(raw_lines[i]):
+                m = _TIMESTAMP_RE.search(raw_lines[i])
+                start = _to_seconds(m.group(1), m.group(2))
+                end = _to_seconds(m.group(3), m.group(4))
+                description = raw_lines[i + 1] if i + 1 < n else ""
+                keywords_raw = raw_lines[i + 2] if i + 2 < n else ""
+                voiceover = raw_lines[i + 3] if i + 3 < n else ""
+                scenes.append(Scene(
+                    start=start, end=end, description=description,
+                    keywords=_split_keywords(keywords_raw), voiceover=voiceover,
+                ))
+                i += 4
+            else:
+                i += 1  # stray header line (e.g. "Timestamp"), skip it
+        return scenes
+
+    # --- Format B: delimited rows (tab, pipe/Markdown table, or 2+ spaces) ---
+    delimiter = _detect_delimiter(raw_lines[0])
 
     for line in raw_lines:
         if _is_markdown_separator(line):
             continue
 
         if delimiter == "|":
-            # Strip a leading/trailing pipe so split doesn't yield an empty
-            # first column, e.g. "| 0:00–0:30 | ... |" -> "0:00–0:30 | ..."
             trimmed = line.strip()
             if trimmed.startswith("|"):
                 trimmed = trimmed[1:]
@@ -158,7 +192,6 @@ def parse_scene_script(path: str = SCRIPT_PATH) -> List[Scene]:
         if len(cols) < 3:
             continue
 
-        # header row auto-skip: first row has no timestamp pattern
         if not _TIMESTAMP_RE.search(cols[0]):
             continue
 
