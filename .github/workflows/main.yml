@@ -6,7 +6,8 @@ on:
     paths:
       - "script.txt"
       - "Build_video.py"
-  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
+      - "generate_voiceover.py"
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -25,7 +26,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install Python dependencies
-        run: pip install moviepy requests
+        run: pip install moviepy requests google-genai
+
+      - name: Generate voiceover
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python generate_voiceover.py
 
       - name: Run video builder
         env:
