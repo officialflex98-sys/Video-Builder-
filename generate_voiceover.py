@@ -37,16 +37,60 @@ SAMPLE_RATE = 24000
 CHANNELS = 1
 SAMPLE_WIDTH = 2               # 16-bit PCM
 
-# Stay safely under Gemini's ~8,000 character input limit per call.
-MAX_CHUNK_CHARS = 6000
+# Gemini's documented limit is ~8,000 input characters per call, but in
+# practice the full script (or even 6,000-char chunks) has proven too much
+# for reliable single-call generation. 3,500 keeps each call comfortably
+# smaller and, for a script this length, naturally lands on 3 chunks/calls.
+MAX_CHUNK_CHARS = 3500
 
 MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 20
 
 
+# If the number of chunks a script needs reaches this, print a warning -
+# free-tier Gemini TTS caps out at roughly 10-15 requests/day, so a long
+# script (50+ scenes) can burn through that in one run.
+CHUNK_COUNT_WARNING_THRESHOLD = 8
+
+import re as _re
+_SENTENCE_SPLIT_RE = _re.compile(r"(?<=[.!?])\s+")
+
+
+def _split_long_text(text: str, max_chars: int):
+    """Splits a single scene's voiceover text that's already longer than
+    max_chars on its own, breaking on sentence boundaries where possible
+    so no one Gemini call ever exceeds max_chars - this matters once
+    individual scenes get longer in future scripts."""
+    if len(text) <= max_chars:
+        return [text]
+
+    sentences = _SENTENCE_SPLIT_RE.split(text)
+    pieces = []
+    current = ""
+    for sentence in sentences:
+        if current and len(current) + len(sentence) + 1 > max_chars:
+            pieces.append(current.strip())
+            current = ""
+        # A single sentence longer than max_chars on its own: hard-split it,
+        # there's no cleaner boundary available.
+        if len(sentence) > max_chars:
+            if current:
+                pieces.append(current.strip())
+                current = ""
+            for j in range(0, len(sentence), max_chars):
+                pieces.append(sentence[j:j + max_chars].strip())
+            continue
+        current = f"{current} {sentence}".strip()
+    if current:
+        pieces.append(current.strip())
+    return [p for p in pieces if p]
+
+
 def _chunk_scenes(scenes, max_chars: int = MAX_CHUNK_CHARS):
     """Groups consecutive scenes' voice-over lines into chunks, each kept
-    under max_chars, so every chunk fits in a single Gemini TTS call."""
+    under max_chars, so every chunk fits in a single Gemini TTS call. A
+    scene whose own voiceover text exceeds max_chars is split internally
+    (on sentence boundaries) rather than producing an oversized chunk."""
     chunks = []
     current = []
     current_len = 0
@@ -55,15 +99,22 @@ def _chunk_scenes(scenes, max_chars: int = MAX_CHUNK_CHARS):
         text = scene.voiceover.strip()
         if not text:
             continue
-        if current and current_len + len(text) + 1 > max_chars:
-            chunks.append(" ".join(current))
-            current = []
-            current_len = 0
-        current.append(text)
-        current_len += len(text) + 1
+
+        for piece in _split_long_text(text, max_chars):
+            if current and current_len + len(piece) + 1 > max_chars:
+                chunks.append(" ".join(current))
+                current = []
+                current_len = 0
+            current.append(piece)
+            current_len += len(piece) + 1
 
     if current:
         chunks.append(" ".join(current))
+
+    if len(chunks) >= CHUNK_COUNT_WARNING_THRESHOLD:
+        print(f"  [warn] this script needs {len(chunks)} Gemini TTS calls - "
+              f"check that's within today's remaining free-tier quota "
+              f"before running, or you may hit a PerDay 429 partway through.")
 
     return chunks
 
