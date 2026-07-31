@@ -112,6 +112,9 @@ class Scene:
     voiceover: str = ""
     clip_paths: List[str] = field(default_factory=list)
     _duration_override: Optional[float] = None   # set once real VO audio is measured/scaled
+    idx: int = -1                # stable position in the original parsed list - used to
+                                  # name this scene's render file consistently across retry
+                                  # attempts, even if some scenes later get filtered out
 
     @property
     def duration(self) -> float:
@@ -337,6 +340,25 @@ def fetch_clips_for_scene(scene: Scene, used_ids: set, out_dir: str = "clips") -
 # ----------------------------------------------------------------------------
 # 4. Rendering each scene to its own file (and closing everything after)
 # ----------------------------------------------------------------------------
+def _existing_render_is_valid(path: str, expected_duration: float, tol: float = 1.5) -> bool:
+    """True if path already holds a complete render of a scene at roughly
+    the right duration. Used to resume after a workflow timeout/retry
+    without redoing clip-fetching and rendering for scenes already
+    finished in a prior attempt on the same runner."""
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return False
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", path],
+            capture_output=True, text=True, timeout=15,
+        )
+        duration = float(result.stdout.strip())
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return False  # unreadable/partial file from an interrupted attempt - re-render it
+    return abs(duration - expected_duration) <= tol
+
+
 def _make_caption(text: str, duration: float, target_resolution=TARGET_RESOLUTION):
     return (
         TextClip(
@@ -393,6 +415,9 @@ def render_scene_to_file(clip_paths: List[str], duration: float, caption_text: s
 
         composite.write_videofile(
             out_path, fps=fps, codec="libx264", audio=False, logger=None,
+            preset="veryfast",  # this file is an intermediate - it gets re-encoded
+                                 # again at final assembly, so speed matters more
+                                 # than squeezing quality out of this pass
         )
     finally:
         for clip in opened:
@@ -442,17 +467,23 @@ def assemble_video(scenes: List[Scene], voiceover_path: Optional[str] = None,
                     music_path: Optional[str] = MUSIC_PATH,
                     output_path: str = OUTPUT_PATH,
                     scene_render_dir: str = SCENE_RENDER_DIR):
-    # Clear any leftover renders from a previous (e.g. failed) run so they
-    # can't get concatenated into this one.
-    if os.path.exists(scene_render_dir):
-        shutil.rmtree(scene_render_dir)
-    os.makedirs(scene_render_dir)
+    # Deliberately NOT wiped here: on a workflow retry (same runner, same
+    # workspace), any scene already rendered by a prior attempt is reused
+    # instead of redone - see _existing_render_is_valid(). Stale files from
+    # an unrelated earlier run aren't a real risk since CI runners are
+    # ephemeral per workflow run; the directory only survives across the
+    # retry-wrapper's own attempts within a single run.
+    os.makedirs(scene_render_dir, exist_ok=True)
 
     scene_files = []
-    for i, scene in enumerate(scenes):
-        scene_path = os.path.join(scene_render_dir, f"scene_{i:03d}.mp4")
-        print(f"  Rendering scene {i + 1}/{len(scenes)} ({scene.duration:.1f}s)...")
-        render_scene_to_file(scene.clip_paths, scene.duration, scene.description, scene_path)
+    for scene in scenes:
+        scene_path = os.path.join(scene_render_dir, f"scene_{scene.idx:03d}.mp4")
+        if _existing_render_is_valid(scene_path, scene.duration):
+            print(f"  Scene {scene.idx + 1}/{len(scenes)} already rendered "
+                  f"from a previous attempt, reusing it ({scene.duration:.1f}s)")
+        else:
+            print(f"  Rendering scene {scene.idx + 1}/{len(scenes)} ({scene.duration:.1f}s)...")
+            render_scene_to_file(scene.clip_paths, scene.duration, scene.description, scene_path)
         scene_files.append(scene_path)
 
     silent_path = os.path.join(scene_render_dir, "_concatenated_silent.mp4")
@@ -525,22 +556,36 @@ def main():
 
     scenes = parse_scene_script(SCRIPT_PATH)
     print(f"Parsed {len(scenes)} scenes from {SCRIPT_PATH}")
+    for i, scene in enumerate(scenes):
+        scene.idx = i
 
     voiceover_path = attach_voiceover(scenes)
 
+    os.makedirs(SCENE_RENDER_DIR, exist_ok=True)
+
     used_ids: set = set()
-    for i, scene in enumerate(scenes, 1):
-        print(f"[{i}/{len(scenes)}] Fetching clips for: {scene.description!r} "
+    ready_scenes: List[Scene] = []
+    for scene in scenes:
+        render_path = os.path.join(SCENE_RENDER_DIR, f"scene_{scene.idx:03d}.mp4")
+        if _existing_render_is_valid(render_path, scene.duration):
+            # Already fully rendered by a previous (e.g. timed-out) attempt
+            # on this same runner - skip re-fetching its clips entirely.
+            print(f"[{scene.idx + 1}/{len(scenes)}] Already rendered from a "
+                  f"previous attempt, skipping clip fetch: {scene.description!r}")
+            ready_scenes.append(scene)
+            continue
+
+        print(f"[{scene.idx + 1}/{len(scenes)}] Fetching clips for: {scene.description!r} "
               f"(duration {scene.duration:.1f}s)")
         fetch_clips_for_scene(scene, used_ids)
         if not scene.clip_paths:
-            print(f"  [warn] no clips found for scene {i}, it will be skipped")
+            print(f"  [warn] no clips found for scene {scene.idx + 1}, it will be skipped")
+            continue
+        ready_scenes.append(scene)
 
-    scenes = [s for s in scenes if s.clip_paths]
+    log_to_supabase(ready_scenes, voiceover_path)
 
-    log_to_supabase(scenes, voiceover_path)
-
-    output = assemble_video(scenes, voiceover_path=voiceover_path)
+    output = assemble_video(ready_scenes, voiceover_path=voiceover_path)
     print(f"Done -> {output}")
 
 
