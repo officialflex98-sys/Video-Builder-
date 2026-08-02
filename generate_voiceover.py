@@ -135,7 +135,12 @@ def _chunk_scenes(scenes, max_chars: int = MAX_CHUNK_CHARS):
 
 def _synthesize(client: "genai.Client", text: str) -> bytes:
     """Calls Gemini TTS once for a chunk of the script, returns raw PCM
-    bytes. Retries with backoff on transient rate limits (429)."""
+    bytes. Retries with backoff on transient errors: rate limits (429,
+    excluding per-day caps, which retrying can't fix) and server-side
+    errors (5xx, e.g. transient "500 INTERNAL"). ClientError and ServerError
+    are siblings in this SDK - neither is a subclass of the other - so both
+    must be caught via their shared base APIError, or 5xx errors slip past
+    unretried."""
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = client.models.generate_content(
@@ -151,16 +156,23 @@ def _synthesize(client: "genai.Client", text: str) -> bytes:
                 ),
             )
             return response.candidates[0].content.parts[0].inline_data.data
-        except genai_errors.ClientError as e:
-            is_quota_error = getattr(e, "code", None) == 429 or "RESOURCE_EXHAUSTED" in str(e)
+        except genai_errors.APIError as e:
+            code = getattr(e, "code", None)
+            is_server_error = isinstance(e, genai_errors.ServerError) or (
+                code is not None and 500 <= code < 600
+            )
+            is_quota_error = code == 429 or "RESOURCE_EXHAUSTED" in str(e)
             is_daily_cap = "PerDay" in str(e)
-            if not is_quota_error or attempt == MAX_RETRIES:
+            is_transient = is_server_error or (is_quota_error and not is_daily_cap)
+
+            if not is_transient or attempt == MAX_RETRIES:
                 if is_daily_cap:
                     print("  [quota] This is a PER-DAY quota - retrying won't help until it "
                           "resets.")
                 raise
             wait = DEFAULT_RETRY_DELAY * attempt
-            print(f"  [rate limit] hit quota, retrying in {wait}s "
+            reason = "server error" if is_server_error else "rate limit"
+            print(f"  [{reason}] hit a transient error, retrying in {wait}s "
                   f"(attempt {attempt}/{MAX_RETRIES})...")
             time.sleep(wait)
 
