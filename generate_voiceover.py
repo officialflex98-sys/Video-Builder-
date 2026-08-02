@@ -2,9 +2,15 @@
 Generates the full documentary narration using Gemini's TTS API, reading
 the ENTIRE script.txt in a small number of large chunks (not one call per
 scene). This works within Gemini's per-call limits - roughly 8,000 input
-characters and ~655 seconds (~11 minutes) of output audio per call - while
-keeping the total call count per day comfortably under the free tier's
-10-15 requests/day cap.
+characters and ~655 seconds (~11 minutes) of output audio per call.
+
+IMPORTANT: the gemini-3.1-flash-tts free tier caps out at just 10 requests
+PER DAY, PER PROJECT, PER MODEL - and that's shared across every run of
+this script today, not reset per-run. Iterating on Build_video.py by
+repeatedly re-running the full GitHub Actions pipeline will burn through
+this fast even though a single run only needs a few chunks. If you hit a
+"PerDay" 429, retrying won't help until the quota resets (daily, around
+midnight Pacific time) - see https://ai.dev/rate-limits for current limits.
 
 Chunks are concatenated afterward into a single continuous voiceover.wav,
 so the narration is one uninterrupted vocal performance rather than dozens
@@ -15,6 +21,12 @@ picks that file up automatically and scales each scene's on-screen duration
 proportionally to fit the real narration length - it does not try to match
 each scene to an individually-generated audio slice.
 
+If script.txt has no Voice-over Script text at all (e.g. the narration-free
+dates/archival-footage-only timeline format, which has no VO column), this
+is treated as intentional, not an error: the script exits cleanly with no
+voiceover.wav written, and Build_video.py falls back to each scene's own
+script.txt timestamp duration instead of a narration-scaled one.
+
 Requires: pip install google-genai
 Env vars:  GEMINI_API_KEY (required)
 """
@@ -22,6 +34,7 @@ Env vars:  GEMINI_API_KEY (required)
 import os
 import time
 import wave
+from typing import Optional
 
 from google import genai
 from google.genai import types
@@ -30,7 +43,7 @@ from google.genai import errors as genai_errors
 from Build_video import parse_scene_script, SCRIPT_PATH  # reuse the same parser
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-TTS_MODEL = "gemini-3.1-flash-tts-preview"
+TTS_MODEL = "gemini-2.5-flash-preview-tts"
 VOICE_NAME = "Charon"          # deep, clear, "informative" documentary tone
 OUTPUT_PATH = "voiceover.wav"
 SAMPLE_RATE = 24000
@@ -48,9 +61,10 @@ DEFAULT_RETRY_DELAY = 20
 
 
 # If the number of chunks a script needs reaches this, print a warning -
-# free-tier Gemini TTS caps out at roughly 10-15 requests/day, so a long
-# script (50+ scenes) can burn through that in one run.
-CHUNK_COUNT_WARNING_THRESHOLD = 8
+# free-tier gemini-3.1-flash-tts caps out at just 10 requests/day, shared
+# across every run today (not per-run), so a long script (50+ scenes) can
+# use up most or all of the day's quota in a single generation.
+CHUNK_COUNT_WARNING_THRESHOLD = 6
 
 import re as _re
 _SENTENCE_SPLIT_RE = _re.compile(r"(?<=[.!?])\s+")
@@ -153,7 +167,7 @@ def _synthesize(client: "genai.Client", text: str) -> bytes:
     raise RuntimeError("Unreachable: retries exhausted without raising")
 
 
-def generate_voiceover(script_path: str = SCRIPT_PATH, output_path: str = OUTPUT_PATH) -> str:
+def generate_voiceover(script_path: str = SCRIPT_PATH, output_path: str = OUTPUT_PATH) -> Optional[str]:
     if not GEMINI_API_KEY:
         raise SystemExit("Set the GEMINI_API_KEY environment variable first.")
 
@@ -163,10 +177,18 @@ def generate_voiceover(script_path: str = SCRIPT_PATH, output_path: str = OUTPUT
 
     chunks = _chunk_scenes(scenes)
     if not chunks:
-        raise SystemExit(
-            "No voice-over text found in script.txt - make sure the "
-            "Voice-over Script column is populated for at least one scene."
-        )
+        # Not an error: a script with no Voice-over Script text at all is a
+        # valid, intentional format (e.g. the narration-free dates/archival
+        # -footage timeline prompt), not a documentary script someone forgot
+        # to fill in. Exit cleanly (code 0) rather than failing the
+        # workflow - Build_video.py already falls back to each scene's own
+        # script.txt timestamp duration when no voiceover.wav exists.
+        print(f"No voice-over text found in any of the {len(scenes)} scene(s) parsed from "
+              f"{script_path}. Treating this as a narration-free script (e.g. a dates/"
+              f"archival-footage-only timeline) and skipping TTS generation - "
+              f"Build_video.py will use each scene's own script.txt timestamp duration "
+              f"instead of a narration-scaled one.")
+        return None
 
     print(f"Synthesizing {len(chunks)} chunk(s) covering {len(scenes)} scenes "
           f"with voice '{VOICE_NAME}'...")
