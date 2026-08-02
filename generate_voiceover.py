@@ -4,7 +4,7 @@ the ENTIRE script.txt in a small number of large chunks (not one call per
 scene). This works within Gemini's per-call limits - roughly 8,000 input
 characters and ~655 seconds (~11 minutes) of output audio per call.
 
-IMPORTANT: the gemini-3.1-flash-tts free tier caps out at just 10 requests
+IMPORTANT: the gemini-2.5-flash-tts free tier caps out at just 10 requests
 PER DAY, PER PROJECT, PER MODEL - and that's shared across every run of
 this script today, not reset per-run. Iterating on Build_video.py by
 repeatedly re-running the full GitHub Actions pipeline will burn through
@@ -61,7 +61,7 @@ DEFAULT_RETRY_DELAY = 20
 
 
 # If the number of chunks a script needs reaches this, print a warning -
-# free-tier gemini-3.1-flash-tts caps out at just 10 requests/day, shared
+# free-tier gemini-2.5-flash-tts caps out at just 10 requests/day, shared
 # across every run today (not per-run), so a long script (50+ scenes) can
 # use up most or all of the day's quota in a single generation.
 CHUNK_COUNT_WARNING_THRESHOLD = 6
