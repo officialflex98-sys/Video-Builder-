@@ -1,63 +1,13 @@
-Timestamp
-Scene Description
-Stock Footage Search Keywords
-0:00–0:15
-May 7, 1954 — White flags rise over Dien Bien Phu as the French garrison surrenders after 57 days under siege.
-"Dien Bien Phu surrender 1954", "French Indochina War archival footage", "Viet Minh victory 1954", "Vietnamese soldiers Dien Bien Phu"
-0:15–0:35
-November 20, 1953 — Operation Castor: French paratroopers drop into the Dien Bien Phu valley to build a fortified base.
-"Operation Castor 1953 paratroopers", "French Indochina War airborne drop", "Dien Bien Phu valley aerial", "1953 French paratroopers Vietnam"
-0:35–0:50
-Late 1953 — French troops fortify a ring of strongpoints around the valley, each named for a woman: Beatrice, Gabrielle, Anne-Marie, Eliane.
-"French Indochina War fortifications", "1950s military trench construction", "Dien Bien Phu strongpoints map", "French colonial soldiers Vietnam 1953"
-0:50–1:05
-Early 1954 — General Vo Nguyen Giap masses tens of thousands of Viet Minh troops in the surrounding hills, hauling artillery through dense jungle by hand.
-"Viet Minh artillery jungle 1954", "Vo Nguyen Giap historical footage", "Vietnamese soldiers hauling cannon", "1954 Indochina jungle terrain"
-1:05–1:20
-March 13, 1954 — At 5:00 PM, Viet Minh artillery opens fire on strongpoint Beatrice, beginning the siege of Dien Bien Phu.
-"artillery barrage 1954 Vietnam", "Dien Bien Phu siege begins", "Viet Minh cannon fire archival", "1954 Indochina War battle footage"
-1:20–1:35
-March 13-14, 1954 — Strongpoint Beatrice falls after a night of fierce close-quarters fighting.
-"1954 night battle Vietnam", "French Foreign Legion combat", "Indochina War trench fighting", "Dien Bien Phu Beatrice archival"
-1:35–1:50
-March 14-15, 1954 — Strongpoint Gabrielle is overrun despite a desperate French counterattack.
-"1954 French counterattack Vietnam", "Algerian battalion Indochina War", "Dien Bien Phu Gabrielle fighting", "French colonial troops combat 1954"
-1:50–2:05
-March 17, 1954 — Strongpoint Anne-Marie is abandoned as its Tai auxiliary troops withdraw.
-"Tai auxiliary troops Vietnam 1954", "French withdrawal Indochina War", "Dien Bien Phu outpost abandoned", "1954 Vietnam colonial soldiers retreat"
-2:05–2:20
-March 15-30, 1954 — A tense lull settles over the valley as Viet Minh forces dig their trenches ever closer to the isolated French lines.
-"Viet Minh trench digging 1954", "siege warfare Indochina", "1954 Vietnam military encampment", "French garrison waiting archival"
-2:20–2:35
-March 30, 1954 — Under cover of night, Viet Minh forces capture strongpoints Eliane 1 and Dominique 1 and 2.
-"night assault Vietnam 1954", "Viet Minh infantry attack", "Dien Bien Phu Eliane Dominique", "1954 Indochina War night combat"
-2:35–2:50
-April 10-11, 1954 — A French counterattack retakes lost ground on the Eliane strongpoints in a fierce night assault.
-"French Foreign Legion counterattack", "hand to hand combat 1954", "Dien Bien Phu Eliane recapture", "Indochina War paratroopers fighting"
-2:50–3:05
-April 1954 — Monsoon rains begin flooding the French trenches as parachuted supplies increasingly drift into Viet Minh hands.
-"monsoon rain Vietnam 1954", "flooded trenches archival footage", "parachute supply drop Indochina", "1954 Vietnam War weather conditions"
-3:05–3:20
-April 1954 — Fighting rages over strongpoint Huguette as Viet Minh sappers dig their trenches ever closer under constant shelling.
-"Vietnam War trench warfare 1954", "artillery shelling archival footage", "Dien Bien Phu Huguette fighting", "sapper trench digging Vietnam"
-3:20–3:35
-May 1, 1954 — Under cover of darkness, Viet Minh forces overrun the last outposts ringing the French central camp.
-"night battle Indochina War", "1954 Vietnam final assault", "Viet Minh overrun outpost", "Dien Bien Phu central camp siege"
-3:35–3:50
-May 6, 1954 — Viet Minh sappers detonate a massive mine beneath strongpoint Eliane 2, blasting the hill apart.
-"mine explosion 1954 Vietnam", "Eliane 2 crater Dien Bien Phu", "Vietnam War underground tunnel warfare", "1954 Indochina War demolition"
-3:50–4:05
-May 6-7, 1954 — A final Viet Minh assault overwhelms the last French defensive positions.
-"final assault Vietnam 1954", "Dien Bien Phu last stand", "French defense collapse archival", "Viet Minh victory assault footage"
-4:05–4:20
-May 7, 1954 — General Christian de Castries orders the French garrison to surrender as the flag comes down over his command bunker.
-"General de Castries surrender", "French flag lowered 1954", "Dien Bien Phu command bunker", "1954 Vietnam War surrender footage"
-4:20–4:30
-May 7, 1954 — Nearly 10,000 French Union soldiers are taken prisoner, beginning a brutal march into captivity.
-"French POWs Vietnam 1954", "prisoners of war march Indochina", "1954 Viet Minh captured soldiers", "Dien Bien Phu aftermath archival"
-4:30–4:45
-July 21, 1954 — The Geneva Accords are signed, ending the First Indochina War and dividing Vietnam at the 17th parallel.
-"Geneva Accords 1954 signing", "Geneva Conference Indochina 1954", "Vietnam partition map 1954", "1954 peace treaty archival footage"
-4:45–5:00
-1954 and after — French colonial rule in Indochina ends, setting the stage for the Vietnam War still to come.
-"French Indochina withdrawal 1954", "colonial Vietnam end footage", "Vietnam War prelude archival", "1950s Vietnam historical footage"
+| Timestamp | Scene Description | Image Prompt Keywords | Voice-over Script |
+|---|---|---|---|
+| 0:00–0:30 | A cinematic, historically inspired World War One battlefield at dawn. Rows of soldiers in khaki uniforms and steel Brodie helmets crouch in a muddy trench, rifles with fixed bayonets in hand, mist drifting over no man's land beyond the sandbags. Dramatic overcast sky, realistic, epic scale, historically accurate uniforms and equipment, 8K quality. | soldiers trench dawn mist rifles bayonets WWI | On the first of July, 1916, over one hundred thousand men waited in the trenches of northern France. In minutes, more of them would die than on any other single day in British military history. This is the story of the Battle of the Somme. |
+| 0:30–1:10 | A cinematic aerial-style view of a vast World War One battlefield, a network of zigzagging trenches cutting across rolling French farmland, barbed wire coiled across churned earth, distant artillery smoke rising on the horizon. Highly detailed, realistic, overcast lighting, 8K quality. | WWI trench network aerial battlefield barbed wire | By 1916, the war on the Western Front had stalled into a bloody stalemate. Both sides were dug into trenches stretching hundreds of miles, and commanders on all sides searched for a way to break the deadlock. |
+| 1:10–1:50 | A cinematic, historically inspired command tent interior. British and French officers in period World War One uniforms lean over a large paper map spread across a wooden table, marked with troop positions and arrows, oil lamp lighting, tense expressions, realistic, 8K quality. | WWI officers map command tent planning | The Allied plan was to launch a massive combined British and French offensive along the Somme river, hoping a week-long artillery bombardment would destroy German defenses before infantry advanced across open ground. |
+| 1:50–2:30 | A cinematic World War One battlefield at night, illuminated by the bright flashes of massed artillery guns firing in sequence along a ridge, smoke and dust filling the air, distant explosions lighting the horizon. Highly detailed, dramatic, realistic, 8K quality. | WWI artillery barrage night explosions ridge | For seven days, over one and a half million shells rained down on German lines. The bombardment was so immense it could be heard across the English Channel — but deep underground, German soldiers sheltered in fortified bunkers, waiting it out largely unharmed. |
+| 2:30–3:10 | A cinematic, historically inspired dawn battlefield scene. Long lines of British soldiers in khaki uniforms climb out of trenches over sandbagged parapets, advancing in formation across open muddy ground toward distant barbed wire, officers with whistles leading the charge, dramatic lighting, realistic, 8K quality. | WWI soldiers going over the top trench charge | When the whistles blew on the morning of July 1st, waves of soldiers climbed out of their trenches and advanced across open ground, exactly as ordered. What they walked into was largely intact German machine gun positions the bombardment had failed to destroy. |
+| 3:10–3:50 | A cinematic, historically inspired World War One battlefield, distant machine gun nests in fortified concrete positions along a ridge, muzzle flashes visible through smoke, soldiers taking cover behind shell craters in a muddy field. Realistic, dramatic, historically accurate, no graphic detail, 8K quality. | WWI machine gun position ridge shell craters | The result was catastrophic. On that single day, the British Army suffered close to sixty thousand casualties — the worst single day's losses in its entire history, a grim fact that has never been surpassed. |
+| 3:50–4:30 | A cinematic, historically inspired World War One battlefield weeks into a campaign, exhausted soldiers in mud-covered uniforms moving cautiously through a devastated landscape of shattered trees and shell craters filled with water, grey overcast sky, realistic, 8K quality. | WWI muddy battlefield shattered trees devastation | Yet the battle did not end that day. It ground on for nearly five months, through summer heat and autumn rain, as both sides fed men and resources into a battle of attrition across a shrinking, shattered stretch of land. |
+| 4:30–5:00 | A cinematic, historically inspired scene of an early World War One tank advancing across a muddy battlefield, soldiers following cautiously behind its armored hull, smoke and dust in the background, dramatic lighting, historically accurate rhomboid tank design, 8K quality. | WWI early tank battlefield advance soldiers | In September, the British introduced a new weapon to the battlefield for the first time in history: the tank. Slow and mechanically unreliable, these early machines nonetheless hinted at a new kind of warfare still to come. |
+| 5:00–5:40 | A cinematic, historically inspired late-autumn World War One battlefield, rain falling over a landscape of flooded trenches and mud, a lone soldier standing at the edge of a crater looking out over the silent, devastated terrain. Somber, realistic lighting, 8K quality. | WWI flooded trenches rain somber battlefield aftermath | By the time the battle finally ended in November 1916, over one million men from both sides had been killed, wounded, or gone missing. The front line had moved forward only a few miles. |
+| 5:40–6:10 | A cinematic, historically inspired modern-day image of neat rows of white war graves stretching across a green French hillside under a soft golden sunset, peaceful and solemn, realistic, 8K quality. | WWI cemetery war graves hillside sunset memorial | Historians still debate whether the Somme achieved anything strategically. But its true legacy is human: an entire generation scarred by a single battle, and a stark, permanent reminder of the true cost of industrial warfare. |
+| 6:10–6:40 | A final cinematic wide shot of a quiet, restored World War One battlefield today, gentle green hills where trenches once stood, a single weathered memorial stone standing in soft evening light, peaceful, reflective, realistic, 8K quality. | WWI battlefield today memorial peaceful evening | More than a century later, the Somme remains a name that still carries weight — not for what it won, but for everything it cost. Some battles are remembered not for victory, but for what they teach us about the price of war. |
